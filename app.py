@@ -1,30 +1,41 @@
 from flask import Flask
 from flask import request
+
 import sqlite3 as db
 
 app = Flask(__name__)
 
 
+def dict_factory(cursor, row):
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
+
+
 def get_data(query: str):
     con = db.connect('exchange.db')
+    con.row_factory = dict_factory
     cursor = con.execute(query)
     result = cursor.fetchall()
+    con.commit()
     con.close()
     return result
 
 
-@app.route("/Currency/<value_name>/rating", methods=['GET', 'POST', 'PUT', 'DELETE'])
+@app.route("/Currency/<value_name>/rating")
 def feedback(value_name):
-    if request.method == 'GET':
-        response_db = get_data(
-            f'select round(avg(rating), 2), cur_name from Rating where cur_name="{value_name}"')
-        return response_db
-    elif request.method == 'POST':
-        pass
-    elif request.method == 'PUT':
-        pass
-    else:
-        pass
+    response_db = get_data(f'select round(avg(rating), 2), cur_name from Rating where cur_name="{value_name}"')
+    return response_db
+
+
+@app.post("/Currency/<value_name>/rating")
+def currency_rating(value_name):
+    request_data = request.get_json()
+    comment = request_data['comment']
+    rating = request_data['rating']
+    get_data(f' insert into Rating (cur_name, rating, comment) values ("{value_name}", "{rating}", "{comment}")')
+    return 'ok'
 
 
 @app.get("/Currency/<value_name>")
@@ -39,7 +50,7 @@ def exchange(value, second_value):
         response_db = get_data(f'''select round(
         (select cost_concerning_USD from Currency where datatime="11.08.2021" and currency_name="{value}")/
         (select cost_concerning_USD from Currency where datatime="11.08.2021" and currency_name="{second_value}"), 2)
-''')
+        as exchange_value''')
         return response_db
     else:
         pass
