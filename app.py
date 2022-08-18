@@ -81,7 +81,7 @@ def trade(user_id, value, second_value):
         spent = get_data(
             f'update Account set balance = {user_balance[0]["balance"] - amount} where user_id ={user_id} and currency_name = {value}')
         recive = get_data(
-            f'update Account set  balance = {user_balance_second[0]["balance"] + needed_second_value} where user_id ={user_id} and currency_name = {value}')
+            f'update Account set  balance = {user_balance_second[0]["balance"] + needed_second_value} where user_id ={user_id} and currency_name = {second_value}')
 
         get_data(f'''insert into Transfer 
         (type_of_transaction, amount_of_currency_spent, from_what_currency, in_what_currency, data_and_time, the_ammount_of_currency, donor_account, beneficiary_account) values 
