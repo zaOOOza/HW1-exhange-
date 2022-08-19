@@ -15,7 +15,7 @@ def dict_factory(cursor, row):
     return d
 
 
-def get_data(query: str):
+def get_data(query):
     con = db.connect('exchange.db')
     con.row_factory = dict_factory
     cursor = con.execute(query)
@@ -63,29 +63,33 @@ def trade(user_id, value, second_value):
         f'select balance from Account where user_id = "{user_id}" and currency_name= "{second_value}"')
 
     avaliable_currency_value = get_data(
-        f'select * from Currency where currency_name = "{second_value}" order by datatime desc limit 1')
+        f'select * from Currency where currency_name = "{value}" order by datatime desc limit 1')
     value_cost_per_one = avaliable_currency_value[0]['cost_concerning_USD']
 
     avaliable_currency_second_value = get_data(
         f'select * from Currency where currency_name = "{second_value}" order by datatime desc limit 1')
     second_value_cost_per_one = avaliable_currency_second_value[0]['cost_concerning_USD']
 
-    needed_second_value = amount * 1.0 * value_cost_per_one / second_value_cost_per_one
+    needed_second_value = amount * 1.0 * value_cost_per_one * second_value_cost_per_one
 
-    exists_second_value_currency = avaliable_currency_second_value[0]['avaliable_quantity']
+    exists_second_value_currency = avaliable_currency_second_value[0]['available_quantity']
     if (user_balance[0]['balance'] >= amount) and (exists_second_value_currency > needed_second_value):
         get_data(
-            f'update Currency set available_quantity = {exists_second_value_currency - needed_second_value} where datatime ={avaliable_currency_second_value[0]["datetime"]} and currency_name = {second_value}')
+            f'update Currency set available_quantity = "{exists_second_value_currency - needed_second_value}" where datatime = "{avaliable_currency_second_value[0]["datatime"]}" and currency_name = "{second_value}"')
         get_data(
-            f'update Currency set available_quantity = {avaliable_currency_value[0]["avaliable_quantity"] + amount} where datatime ={avaliable_currency_second_value[0]["datetime"]} and currency_name = {value}')
-        spent = get_data(
-            f'update Account set balance = {user_balance[0]["balance"] - amount} where user_id ={user_id} and currency_name = {value}')
-        recive = get_data(
-            f'update Account set  balance = {user_balance_second[0]["balance"] + needed_second_value} where user_id ={user_id} and currency_name = {value}')
+            f'update Currency set available_quantity = "{avaliable_currency_value[0]["available_quantity"] + amount}" where datatime ="{avaliable_currency_value[0]["datatime"]}" and currency_name = "{value}"')
+        get_data(
+            f'update Account set balance = "{user_balance[0]["balance"] - amount}" where user_id ="{user_id}" and currency_name = "{value}"')
+        get_data(
+            f'update Account set  balance = "{user_balance_second[0]["balance"] + needed_second_value}" where user_id ="{user_id}" and currency_name = "{value}"')
 
         get_data(f'''insert into Transfer 
-        (type_of_transaction, amount_of_currency_spent, from_what_currency, in_what_currency, data_and_time, the_ammount_of_currency, donor_account, beneficiary_account) values 
-        ({"exchange"}, {spent}, {value}, {second_value}, {"17.08.2022, 23:52"}, {recive}, {user_id}, {"FRANSUA SHOVINP`YE"})''')
+            (user_name, type_of_transaction, amount_of_currency_spent, from_what_currency, in_what_currency, data_and_time, the_ammount_of_currency, donor_account, beneficiary_account) values 
+            ("{"user_1"}", "{"exchange"}", "{amount}", "{value}", "{second_value}", "{"17-08-2022-23-52"}", "{needed_second_value}", "{user_id}", "{"1233123"}")''')
+        return 'ok'
+    else:
+        return 'NOT OK'
+
 
 
 @app.get("/Currency")
@@ -97,7 +101,7 @@ def home_page():
 @app.get("/User/<user_id>")
 def user_page(user_id):
     response_db = get_data(f'select User.login, Account.currency_name, Account.balance, Account.user_deposit, '
-                           f'Account.currency_id from User join Account where User.id=Account.user_id = {user_id}')
+                           f'Account.currency_id from User join Account where User.id=Account.user_id = "{user_id}"')
     return response_db
 
 
@@ -125,3 +129,7 @@ def user_deposit(deposit_id):
 def choose_deposit(deposit_value):
     response_db = get_data(f'select * from Deposit where value_name="{deposit_value}"')
     return response_db
+
+
+if __name__ == '__main__':
+    app.run()
