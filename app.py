@@ -1,108 +1,132 @@
-from flask import Flask
-from flask import request
+from flask import Flask, request
+import datetime
+import model
+from model import db
+from model import Currency, Account, Rating, Transfer, User, History, Deposit
 
-import sqlite3 as db
-
-from datetime import datetime
 
 app = Flask(__name__)
-
-
-def dict_factory(cursor, row):
-    d = {}
-    for idx, col in enumerate(cursor.description):
-        d[col[0]] = row[idx]
-    return d
-
-
-def get_data(query):
-    con = db.connect('exchange.db')
-    con.row_factory = dict_factory
-    cursor = con.execute(query)
-    result = cursor.fetchall()
-    con.commit()
-    con.close()
-    return result
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///exchange.db'
+db.init_app(app)
 
 
 @app.get("/Currency/<value_name>/rating")
 def feedback(value_name):
-    response_db = get_data(f'select round(avg(rating), 2), cur_name from Rating where cur_name="{value_name}"')
-    return response_db
+    response_db = db.session.query(
+            db.func.avg(model.Rating.rating)
+    ).filter(
+            model.Rating.cur_name == value_name
+    ).first()
+
+    return f'{value_name}' f' avg: {response_db}'
 
 
 @app.post("/Currency/<value_name>/rating")
 def currency_rating(value_name):
-    request_data = request.get_json()
+    request_data = request.json
     comment = request_data['comment']
     rating = request_data['rating']
-    get_data(f' insert into Rating (cur_name, rating, comment) values ("{value_name}", "{rating}", "{comment}")')
-    return 'ok'
+    response_db = Rating(
+        value_name=value_name,
+        comment=comment,
+        rating=rating
+    )
+    try:
+        db.session.add(response_db)
+        db.session.commit()
+    except Exception:
+        return 'Err'
+    return response_db['status']
 
 
 @app.get("/Currency/<value_name>")
 def show_currency(value_name):
-    response_db = get_data(f'select * from Currency where currency_name = "{value_name}"')
-    return response_db
+    response_db = Currency.query.filter_by(currency_name=value_name).all()
+    return [itm.to_dict() for itm in response_db]
 
 
 @app.get("/Currency/trade/<value>/<second_value>")
 def exchange(value, second_value):
-    response_db = get_data(f'''select round(
-    (select cost_concerning_USD from Currency where currency_name= "{value}" order by datatime DESC limit 1)/
-    (select cost_concerning_USD from Currency where currency_name= "{second_value}" order by datatime DESC limit 1), 2)
-    as exchange_value''')
-    return response_db
+    response_db = Currency.query.filter_by(currency_name=value, datatime='11-08-2022-23-51').first()
+    second_response_db = Currency.query.filter_by(currency_name=second_value, datatime='11-08-2022-23-53').first()
+    if response_db is None and second_response_db is None:
+        return 'No currency to trade'
+    return {
+        'exchange': response_db.cost_concerning_USD / second_response_db.cost_concerning_USD
+    }
 
 
-@app.post("/Currency/trade/<user_id>/<value>/<second_value>")
+@app.post("/Currency/trade/user_id/<value>/<second_value>")
 def trade(user_id, value, second_value):
-    amount = request.get_json()['amount']
-    user_balance = get_data(f'select balance from Account where user_id = "{user_id}" and currency_name= "{value}"')
-    user_balance_second = get_data(
-        f'select balance from Account where user_id = "{user_id}" and currency_name= "{second_value}"')
+    request_data = request.json['ammount']
+    date_now = datetime.datetime.now().strftime('%d-%m-%Y')
 
-    avaliable_currency_value = get_data(
-        f'select * from Currency where currency_name = "{value}" order by datatime desc limit 1')
-    value_cost_per_one = avaliable_currency_value[0]['cost_concerning_USD']
+    trade_currency = exchange(value, second_value)
 
-    avaliable_currency_second_value = get_data(
-        f'select * from Currency where currency_name = "{second_value}" order by datatime desc limit 1')
-    second_value_cost_per_one = avaliable_currency_second_value[0]['cost_concerning_USD']
+    user_value_balance = Account.query.filter_by(user_id=user_id, currency_name=value).first()
+    user_second_value_balance = Account.query.filter_by(user_id=user_id, currency_name=second_value).first()
+    if user_value_balance is None or user_second_value_balance is None:
+        return f'{user_id} don`t have {value} '
 
-    needed_second_value = amount * 1.0 * value_cost_per_one * second_value_cost_per_one
+    need_to_transfer = round(request_data / float(trade_currency), 2)
 
-    exists_second_value_currency = avaliable_currency_second_value[0]['available_quantity']
-    if (user_balance[0]['balance'] >= amount) and (exists_second_value_currency > needed_second_value):
-        get_data(
-            f'update Currency set available_quantity = "{exists_second_value_currency - needed_second_value}" where datatime = "{avaliable_currency_second_value[0]["datatime"]}" and currency_name = "{second_value}"')
-        get_data(
-            f'update Currency set available_quantity = "{avaliable_currency_value[0]["available_quantity"] + amount}" where datatime ="{avaliable_currency_value[0]["datatime"]}" and currency_name = "{value}"')
-        get_data(
-            f'update Account set balance = "{user_balance[0]["balance"] - amount}" where user_id ="{user_id}" and currency_name = "{value}"')
-        get_data(
-            f'update Account set  balance = "{user_balance_second[0]["balance"] + needed_second_value}" where user_id ="{user_id}" and currency_name = "{value}"')
+    exchange_currency = Currency.query.filter_by(currency_name=value, datatime=date_now).first()
+    exchange_second_currency = Currency.query.filter_by(currency_name=value, datatime=date_now).first()
 
-        get_data(f'''insert into Transfer 
-            (user_name, type_of_transaction, amount_of_currency_spent, from_what_currency, in_what_currency, data_and_time, the_ammount_of_currency, donor_account, beneficiary_account) values 
-            ("{"user_1"}", "{"exchange"}", "{amount}", "{value}", "{second_value}", "{"17-08-2022-23-52"}", "{needed_second_value}", "{user_id}", "{"1233123"}")''')
-        return 'ok'
+    if float(user_value_balance.balance) > exchange_currency and (
+            float(exchange_second_currency.available_quantity) > need_to_transfer
+    ):
+
+        user_value_balance.balance = float(user_value_balance.balance) - exchange_currency
+        exchange_currency.available_quantity = float(exchange_currency.available_quantity) + exchange_currency
+        exchange_second_currency.available_quantity = float(
+            exchange_second_currency.available_quantity) - trade_currency
+        user_second_value_balance.balance = float(user_second_value_balance.balance) + trade_currency
+
+        try:
+            db.session.add(user_value_balance)
+            db.session.add(exchange_currency)
+            db.session.add(exchange_second_currency)
+            db.session.add(user_second_value_balance)
+            db.session.commit()
+        except Exception:
+            return 'Somethings go wrong'
+
+        save_transfer = Transfer(
+            user_id=user_id,
+            type_of_transaction='exchange',
+            ammount_of_currency_spent=exchange_currency,
+            from_what_currency=value,
+            in_what_currency=second_value,
+            data_and_time=date_now,
+            the_ammount_of_currency=trade_currency,
+            donor_account=user_id.currency_id,
+            beneficiary_account=user_id.currency_id,
+
+        )
+        try:
+            db.session.add(save_transfer)
+            db.session.commit()
+        except Exception:
+            return 'Fail data'
     else:
-        return 'NOT OK'
-
+        return 'Err'
+    return request_data['status']
 
 
 @app.get("/Currency")
 def home_page():
-    response_db = get_data(f' select * from Currency')
-    return response_db
+    result = Currency.query.all()
+    return [itm.to_dict() for itm in result]
 
 
 @app.get("/User/<user_id>")
 def user_page(user_id):
-    response_db = get_data(f'select User.login, Account.currency_name, Account.balance, Account.user_deposit, '
-                           f'Account.currency_id from User join Account where User.id=Account.user_id = "{user_id}"')
-    return response_db
+    response_data = db.session.query(model.User, model.Account).join(
+        model.User, model.User.id == model.Account.user_id).filter_by(login=user_id).all()
+    return {
+        'Test': f'{response_data}'
+    }
 
 
 @app.post("/User/transfer")
@@ -110,26 +134,45 @@ def user_transfer():
     pass
 
 
-@app.get("/User/history/<user_name>")
+@app.get("/User/<user_name>/history")
 def user_history(user_name):
-    response_db = get_data(f'select history from History where user_name ="{user_name}"')
-    return response_db
+    response_db = Transfer.query.filter_by(user_name=user_name).all()
+    return {
+        'history': f'{response_db}'
+    }
 
 
-@app.route("/User/deposit/<deposit_id>", methods=['GET', 'POST'])
-def user_deposit(deposit_id):
-    if request.method == 'GET':
-        response_db = get_data(f'select user_deposit from Account where user_deposit="{deposit_id}" ')
-        return response_db
+@app.post("/User/deposit/<user_name>")
+def user_deposit(user_name):
+    response_db = request.json
+    deposit = Deposit(
+        id_user=user_name,
+        deposit_id=response_db['deposit_id'],
+        opening_date=response_db['data']['opening_data'],
+        closing_data=response_db['data']['closing_data'],
+        value_name=response_db['value_name'],
+        balance=response_db['balance'],
+        interest_rate=response_db['data']['interest_rate'],
+        info=response_db['data']['info']
+    )
+    try:
+        db.session.add(deposit)
+        db.session.commit()
+    except Exception:
+        return 'Something go wrong'
     else:
-        pass
+        return response_db['status']
 
 
-@app.get("/Deposit/<deposit_value>")
-def choose_deposit(deposit_value):
-    response_db = get_data(f'select * from Deposit where value_name="{deposit_value}"')
-    return response_db
+@app.get("/User/deposit/<user_name>")
+def choose_deposit(user_name):
+    response_db = Deposit.query.filter_by(id_user=user_name).all()
+    if len(response_db) == 0:
+        return 'You don`t have deposit'
+    return {
+        'Data': f'{response_db}'
+    }
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0')
