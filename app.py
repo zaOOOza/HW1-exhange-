@@ -1,13 +1,21 @@
-from flask import Flask, request
 import datetime
+
+
+from flask import Flask, request
+from flask_migrate import Migrate
+
 import model
+from sqlalchemy import create_engine
+
 from model import db
 from model import Currency, Account, Rating, Transfer, User, History, Deposit
 
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///exchange.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:example@127.0.0.1:5432/postgres'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
+migrate = Migrate(app, db)
 
 
 @app.get("/Currency/<value_name>/rating")
@@ -175,4 +183,4 @@ def choose_deposit(user_name):
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0')
+    app.run(host='0.0.0.0', port=5000, debug=True)

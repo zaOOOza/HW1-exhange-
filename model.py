@@ -6,7 +6,7 @@ db = SQLAlchemy()
 class Account(db.Model):
     __tablename__ = 'Account'
 
-    id = db.Column(db.String(10), db.ForeignKey("user_id"), unique=True, primary_key=True, nullable=False)
+    id = db.Column(db.String(10), primary_key=True, nullable=False)
     user_id = db.Column(db.Integer, nullable=False)
     currency_name = db.Column(db.String, nullable=False)
     balance = db.Column(db.REAL, nullable=False)
@@ -30,7 +30,7 @@ class Account(db.Model):
 class Currency(db.Model):
     __tablename__ = 'Currency'
 
-    id = db.Column(db.Integer, unique=True, primary_key=True, nullable=False)
+    id = db.Column(db.Integer, primary_key=True, nullable=False)
     currency_name = db.Column(db.String, nullable=False)
     cost_concerning_USD = db.Column(db.Integer, nullable=False)
     available_quantity = db.Column(db.Integer, nullable=False)
@@ -81,7 +81,7 @@ class Deposit(db.Model):
 class History(db.Model):
     __tablename__ = 'History'
 
-    id = db.Column(db.Integer, nullable=False, unique=True, primary_key=True, autoincrement=True)
+    id = db.Column(db.Integer, nullable=False, primary_key=True, autoincrement=True)
     user_name = db.Column(db.String, nullable=False)
     history = db.Column(db.String)
 
@@ -99,7 +99,7 @@ class History(db.Model):
 class Rating(db.Model):
     __tablename__ = 'Rating'
 
-    id = db.Column(db.Integer, nullable=False, unique=True, primary_key=True, autoincrement=True)
+    id = db.Column(db.Integer, nullable=False, primary_key=True, autoincrement=True)
     cur_name = db.Column(db.String, nullable=False)
     rating = db.Column(db.Integer)
     comment = db.Column(db.String)
@@ -129,7 +129,7 @@ class Transfer(db.Model):
     comission = db.Column(db.Integer)
     donor_account = db.Column(db.Integer, nullable=False)
     beneficiary_account = db.Column(db.Integer, nullable=False)
-    id = db.Column(db.Integer, nullable=False, unique=True, primary_key=True, autoincrement=True)
+    id = db.Column(db.Integer, nullable=False, primary_key=True, autoincrement=True)
 
     def __repr__(self):
         return f'{self.to_dict()}'
@@ -153,7 +153,7 @@ class Transfer(db.Model):
 class User(db.Model):
     __tablename__ = 'User'
 
-    id = db.Column(db.Integer, nullable=False, unique=True, primary_key=True, autoincrement=True)
+    id = db.Column(db.Integer, nullable=False, primary_key=True, autoincrement=True)
     login = db.Column(db.String, nullable=False, unique=True)
     password = db.Column(db.String, nullable=False)
 
