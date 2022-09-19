@@ -7,7 +7,7 @@ services:
   db:
     image: 'postgres'
     environment:
-      POSTGRES_PASSWORD: example
+      POSTGRES_PASSWORD: postgres
     hostname: 'pg'
     container_name: 'pg'
     ports:

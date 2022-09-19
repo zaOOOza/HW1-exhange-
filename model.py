@@ -1,17 +1,16 @@
-from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import Column, Integer, String, Text, Float
+from database import Base
 
-db = SQLAlchemy()
 
-
-class Account(db.Model):
+class Account(Base):
     __tablename__ = 'Account'
 
-    id = db.Column(db.String(10), primary_key=True, nullable=False)
-    user_id = db.Column(db.Integer, nullable=False)
-    currency_name = db.Column(db.String, nullable=False)
-    balance = db.Column(db.REAL, nullable=False)
-    user_deposit = db.Column(db.Integer)
-    currency_id = db.Column(db.Integer, nullable=False)
+    id = Column(String(10), primary_key=True, nullable=False)
+    user_id = Column(Integer, nullable=False)
+    currency_name = Column(String, nullable=False)
+    balance = Column(Float, nullable=False)
+    user_deposit = Column(Integer)
+    currency_id = Column(Integer, nullable=False)
 
     def __repr__(self):
         return f'{self.to_dict()}'
@@ -27,14 +26,14 @@ class Account(db.Model):
         }
 
 
-class Currency(db.Model):
+class Currency(Base):
     __tablename__ = 'Currency'
 
-    id = db.Column(db.Integer, primary_key=True, nullable=False)
-    currency_name = db.Column(db.String, nullable=False)
-    cost_concerning_USD = db.Column(db.Integer, nullable=False)
-    available_quantity = db.Column(db.Integer, nullable=False)
-    datatime = db.Column(db.String, nullable=False)
+    id = Column(Integer, primary_key=True, nullable=False)
+    currency_name = Column(String, nullable=False)
+    cost_concerning_USD = Column(Integer, nullable=False)
+    available_quantity = Column(Integer, nullable=False)
+    datatime = Column(String, nullable=False)
 
     def __repr__(self):
         return f'{self.to_dict()}'
@@ -50,17 +49,17 @@ class Currency(db.Model):
         }
 
 
-class Deposit(db.Model):
+class Deposit(Base):
     __tablename__ = 'Deposit'
 
-    deposit_ID = db.Column(db.Integer, nullable=False, primary_key=True)
-    opening_date = db.Column(db.String, nullable=False)
-    closing_date = db.Column(db.String, nullable=False)
-    value_name = db.Column(db.String)
-    balance = db.Column(db.REAL, nullable=False)
-    interest_rate = db.Column(db.Integer, nullable=False)
-    info = db.Column(db.String, nullable=False)
-    id_user = db.Column(db.Integer, nullable=False)
+    deposit_ID = Column(Integer, nullable=False, primary_key=True)
+    opening_date = Column(String, nullable=False)
+    closing_date = Column(String, nullable=False)
+    value_name = Column(String)
+    balance = Column(Float, nullable=False)
+    interest_rate = Column(Integer, nullable=False)
+    info = Column(String, nullable=False)
+    id_user = Column(Integer, nullable=False)
 
     def __repr__(self):
         return f'{self.to_dict()}'
@@ -78,12 +77,12 @@ class Deposit(db.Model):
         }
 
 
-class History(db.Model):
+class History(Base):
     __tablename__ = 'History'
 
-    id = db.Column(db.Integer, nullable=False, primary_key=True, autoincrement=True)
-    user_name = db.Column(db.String, nullable=False)
-    history = db.Column(db.String)
+    id = Column(Integer, nullable=False, primary_key=True, autoincrement=True)
+    user_name = Column(String, nullable=False)
+    history = Column(String)
 
     def __repr__(self):
         return f'{self.to_dict()}'
@@ -96,13 +95,13 @@ class History(db.Model):
         }
 
 
-class Rating(db.Model):
+class Rating(Base):
     __tablename__ = 'Rating'
 
-    id = db.Column(db.Integer, nullable=False, primary_key=True, autoincrement=True)
-    cur_name = db.Column(db.String, nullable=False)
-    rating = db.Column(db.Integer)
-    comment = db.Column(db.String)
+    id = Column(Integer, nullable=False, primary_key=True, autoincrement=True)
+    cur_name = Column(String, nullable=False)
+    rating = Column(Integer)
+    comment = Column(String)
 
     def __repr__(self):
         return f'{self.to_dict()}'
@@ -116,20 +115,22 @@ class Rating(db.Model):
         }
 
 
-class Transfer(db.Model):
+class Transfer(Base):
     __tablename__ = 'Transfer'
 
-    user_name = db.Column(db.String, nullable=False)
-    type_of_transaction = db.Column(db.String, nullable=False)
-    amount_of_currency_spent = db.Column(db.REAL, nullable=False)
-    from_what_currency = db.Column(db.String, nullable=False)
-    in_what_currency = db.Column(db.String, nullable=False)
-    data_and_time = db.Column(db.String, nullable=False)
-    the_ammount_of_currency = db.Column(db.REAL, nullable=False)
-    comission = db.Column(db.Integer)
-    donor_account = db.Column(db.Integer, nullable=False)
-    beneficiary_account = db.Column(db.Integer, nullable=False)
-    id = db.Column(db.Integer, nullable=False, primary_key=True, autoincrement=True)
+    user_name = Column(String, nullable=False)
+    type_of_transaction = Column(String, nullable=False)
+    amount_of_currency_spent = Column(Float, nullable=False)
+    from_what_currency = Column(String, nullable=False)
+    in_what_currency = Column(String, nullable=False)
+    data_and_time = Column(String, nullable=False)
+    the_ammount_of_currency = Column(Float, nullable=False)
+    comission = Column(Integer)
+    donor_account = Column(Integer, nullable=False)
+    beneficiary_account = Column(Integer, nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    trade_id = Column(Text)
+    status = Column(Text)
 
     def __repr__(self):
         return f'{self.to_dict()}'
@@ -150,12 +151,12 @@ class Transfer(db.Model):
         }
 
 
-class User(db.Model):
+class User(Base):
     __tablename__ = 'User'
 
-    id = db.Column(db.Integer, nullable=False, primary_key=True, autoincrement=True)
-    login = db.Column(db.String, nullable=False, unique=True)
-    password = db.Column(db.String, nullable=False)
+    id = Column(Integer, nullable=False, primary_key=True, autoincrement=True)
+    login = Column(String, nullable=False, unique=True)
+    password = Column(String, nullable=False)
 
     def __repr__(self):
         return f'{self.to_dict()}'
