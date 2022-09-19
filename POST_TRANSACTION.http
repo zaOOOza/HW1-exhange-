@@ -1,6 +1,0 @@
-POST http://127.0.0.1:5000//Currency/trade/1/UAH/USD
-Content-Type: application/json
-
-{
-  "amount": 15
-}
