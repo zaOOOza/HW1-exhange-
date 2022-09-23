@@ -1,7 +1,6 @@
-POST http://127.0.0.1:5000/Currency
+POST http://127.0.0.1:5000/User/deposit/aloha
 Content-Type: application/json
 
 {
-    "rating": 4,
-    "comment": "comment1"
+    "user_name": 1
 }

@@ -1,25 +1,28 @@
+import os
+
 from celery import Celery
 from datetime import datetime
 from model import Account, Currency, Transfer
 import database
 
-app = Celery('celery_worker', broker='pyamqp://guest@localhost//')
+
+app = Celery('celery_worker', broker=os.environ.get('RABBIT_CONNECTION_STR', 'pyamqp://admin:mypass@rabbitmq//'))
 
 
-def exchange(value, second_value):
+def exchanger(value, second_value):
     database.init_db()
-    response_db = Currency.query.filter_by(currency_name=value, datatime='11-08-2022-23-51').first()
-    second_response_db = Currency.query.filter_by(currency_name=second_value, datatime='11-08-2022-23-53').first()
+    response_db = Currency.query.filter_by(currency_name=value, datatime=datetime.now()).first()
+    second_response_db = Currency.query.filter_by(currency_name=second_value, datatime=datetime.now()).first()
     if response_db is None and second_response_db is None:
-        return 'No currency to trade'
+        return 'No currency to trade1'
     return float(response_db.cost_concerning_USD / second_response_db.cost_concerning_USD)
 
 
 @app.task
 def task1(user_id, value, second_value, request_data):
 
-    date_now = datetime.now().strftime('%d-%m-%Y')
-    trade_currency = exchange(value, second_value)
+    date_now = datetime.now()
+    trade_currency = exchanger(value, second_value)
     user_value_balance = Account.query.filter_by(user_id=user_id, currency_name=value).first()
     user_second_value_balance = Account.query.filter_by(user_id=user_id, currency_name=second_value).first()
     if user_value_balance is None or user_second_value_balance is None:
@@ -51,7 +54,7 @@ def task1(user_id, value, second_value, request_data):
             amount_of_currency_spent=need_to_transfer,
             from_what_currency=value,
             in_what_currency=second_value,
-            data_and_time=date_now,
+            data_and_time=str(date_now),
             the_ammount_of_currency=trade_currency,
             donor_account=user_id.currency_id,
             beneficiary_account=user_id.currency_id,

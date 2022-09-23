@@ -1,9 +1,9 @@
-import uuid
+import os
 import sqlalchemy
+from flask import Flask, request, session
 
-
-from flask import Flask, request
-
+from datetime import datetime
+from random import randint
 
 import model
 import database
@@ -11,6 +11,18 @@ from model import Currency, Rating, Transfer, Deposit
 from celery_worker import task1
 
 app = Flask(__name__)
+
+session_secret = os.environ.get('SESSION_SECRET')
+if not session_secret:
+    if not os.path.exists('session.secret'):
+        secret_file = open('session.secret', 'w')
+        secret_file.write(str(randint(10000000, 999999999)))
+        secret_file.close()
+    secret_file = open('session.secret')
+    session_secret = secret_file.read()
+    secret_file.close()
+
+app.secret_key = session_secret
 
 
 @app.get("/Currency/<value_name>/rating")
@@ -50,8 +62,8 @@ def show_currency(value_name):
 @app.get("/Currency/trade/<value>/<second_value>")
 def exchange(value, second_value):
     database.init_db()
-    response_db = Currency.query.filter_by(currency_name=value, datatime='11-08-2022-23-51').first()
-    second_response_db = Currency.query.filter_by(currency_name=second_value, datatime='11-08-2022-23-53').first()
+    response_db = Currency.query.filter_by(currency_name=value, datatime=datetime.now()).first()
+    second_response_db = Currency.query.filter_by(currency_name=second_value, datatime=datetime.now()).first()
     if response_db is None and second_response_db is None:
         return 'No currency to trade'
     return {
@@ -61,11 +73,7 @@ def exchange(value, second_value):
 
 @app.post("/Currency/trade/user_id/<value>/<second_value>")
 def trade(user_id, value, second_value):
-    request_data = request.json['ammount']
-    #trade_id = uuid.uuid4()
-    #trade_record = Transfer(trade_id=str(trade_id), status='in trade')
-    #database.db_session.add(trade_record)
-    #database.db_session.commit()
+    request_data = request.form.get('ammount')
     task_obj = task1.apply_async(args=[user_id, value, second_value, request_data])
     return {'trade_id': str(task_obj)}
 
@@ -77,14 +85,45 @@ def home_page():
     return [itm.to_dict() for itm in result]
 
 
-@app.get("/User/<user_id>")
-def user_page(user_id):
+@app.route("/User", methods=['GET', 'POST'])
+def user_page():
     database.init_db()
-    response_data = database.db_session.query(model.User, model.Account).join(
-        model.User, model.User.id == model.Account.user_id).filter_by(login=user_id).all()
-    return {
-        'Test': f'{response_data}'
-    }
+    if request.method == 'GET':
+        user_id = session.get('user_id')
+        if user_id is None:
+            return '''
+            <html>
+             <form method="post">
+ 
+
+  <div class="container">
+    <label for="uname"><b>Username</b></label>
+    <input type="text" placeholder="Enter Username" name="uname" required>
+
+    <label for="psw"><b>Password</b></label>
+    <input type="password" placeholder="Enter Password" name="psw" required>
+
+    <button type="submit">Login</button>
+  </div>
+</form> 
+            </html>
+            '''
+        else:
+            response_data = database.db_session.query(model.User, model.Account).join(
+                model.User, model.User.id == model.Account.user_id).filter_by(login=user_id).all()
+            return {
+                'Test': f'{response_data}'
+            }
+    if request.method == 'POST':
+        user_login = request.form.get('uname')
+        user_password = request.form.get('psw')
+        user_info_creds = model.User.query.filter_by(login=user_login, password=user_password).all()
+        if user_info_creds:
+            session['user_id'] = user_login
+            return 'Deal with it'
+        else:
+            'bad gataway'
+
 
 
 @app.post("/User/transfer")
@@ -107,9 +146,9 @@ def user_deposit(user_name):
     database.init_db()
     deposit = Deposit(
         id_user=user_name,
-        deposit_id=response_db['deposit_id'],
+        deposit_ID=response_db['deposit_id'],
         opening_date=response_db['data']['opening_data'],
-        closing_data=response_db['data']['closing_data'],
+        closing_date=response_db['data']['closing_data'],
         value_name=response_db['value_name'],
         balance=response_db['balance'],
         interest_rate=response_db['data']['interest_rate'],
