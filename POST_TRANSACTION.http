@@ -1,7 +1,6 @@
-POST http://127.0.0.1:5000//Currency/trade/1/UAH/USD
+POST http://127.0.0.1:5000//Currency/trade/USD/UAH
 Content-Type: application/json
 
 {
-  "user_id": 1,
   "amount": 15
 }

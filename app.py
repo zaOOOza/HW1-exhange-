@@ -49,7 +49,7 @@ def currency_rating(value_name):
         database.db_session.commit()
     except Exception:
         return 'Err'
-    return response_db['status']
+    return 'ok'
 
 
 @app.get("/Currency/<value_name>")
@@ -62,8 +62,8 @@ def show_currency(value_name):
 @app.get("/Currency/trade/<value>/<second_value>")
 def exchange(value, second_value):
     database.init_db()
-    response_db = Currency.query.filter_by(currency_name=value, datatime=datetime.now()).first()
-    second_response_db = Currency.query.filter_by(currency_name=second_value, datatime=datetime.now()).first()
+    response_db = Currency.query.filter_by(currency_name=value, datatime='25.09.2022').first()
+    second_response_db = Currency.query.filter_by(currency_name=second_value, datatime='25.09.2022').first()
     if response_db is None and second_response_db is None:
         return 'No currency to trade'
     return {
@@ -71,9 +71,10 @@ def exchange(value, second_value):
     }
 
 
-@app.post("/Currency/trade/user_id/<value>/<second_value>")
-def trade(user_id, value, second_value):
+@app.post("/Currency/trade/<value>/<second_value>")
+def trade(value, second_value):
     request_data = request.form.get('ammount')
+    user_id = session.get('user_id')
     task_obj = task1.apply_async(args=[user_id, value, second_value, request_data])
     return {'trade_id': str(task_obj)}
 
@@ -125,7 +126,6 @@ def user_page():
             'bad gataway'
 
 
-
 @app.post("/User/transfer")
 def user_transfer():
     pass
@@ -134,10 +134,32 @@ def user_transfer():
 @app.get("/User/<user_name>/history")
 def user_history(user_name):
     database.init_db()
-    response_db = Transfer.query.filter_by(user_name=user_name).all()
-    return {
-        'history': f'{response_db}'
-    }
+    user_id = session.get('user_id')
+    if user_id is None:
+        return '''
+                <html>
+                 <form method="post">
+
+
+      <div class="container">
+        <label for="uname"><b>Username</b></label>
+        <input type="text" placeholder="Enter Username" name="uname" required>
+
+        <label for="psw"><b>Password</b></label>
+        <input type="password" placeholder="Enter Password" name="psw" required>
+
+        <button type="submit">Login</button>
+      </div>
+    </form> 
+                </html>
+                '''
+
+    else:
+
+        response_db = Transfer.query.filter_by(user_name=user_name).all()
+        return {
+            'history': f'{response_db}'
+        }
 
 
 @app.post("/User/deposit/<user_name>")
@@ -166,12 +188,32 @@ def user_deposit(user_name):
 @app.get("/User/deposit/<user_name>")
 def choose_deposit(user_name):
     database.init_db()
-    response_db = Deposit.query.filter_by(id_user=user_name).all()
-    if len(response_db) == 0:
-        return 'You don`t have deposit'
-    return {
-        'Data': f'{response_db}'
-    }
+    user_id = session.get('user_id')
+    if user_id is None:
+        return '''
+                <html>
+                 <form method="post">
+
+
+      <div class="container">
+        <label for="uname"><b>Username</b></label>
+        <input type="text" placeholder="Enter Username" name="uname" required>
+
+        <label for="psw"><b>Password</b></label>
+        <input type="password" placeholder="Enter Password" name="psw" required>
+
+        <button type="submit">Login</button>
+      </div>
+    </form> 
+                </html>
+                '''
+    else:
+        response_db = Deposit.query.filter_by(id_user=user_name).all()
+        if len(response_db) == 0:
+            return 'You don`t have deposit'
+        return {
+            'Data': f'{response_db}'
+        }
 
 
 @app.teardown_appcontext

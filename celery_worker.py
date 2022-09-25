@@ -11,8 +11,8 @@ app = Celery('celery_worker', broker=os.environ.get('RABBIT_CONNECTION_STR', 'py
 
 def exchanger(value, second_value):
     database.init_db()
-    response_db = Currency.query.filter_by(currency_name=value, datatime=datetime.now()).first()
-    second_response_db = Currency.query.filter_by(currency_name=second_value, datatime=datetime.now()).first()
+    response_db = Currency.query.filter_by(currency_name=value, datatime='25.09.2022').first()
+    second_response_db = Currency.query.filter_by(currency_name=second_value, datatime='25.09.2022').first()
     if response_db is None and second_response_db is None:
         return 'No currency to trade1'
     return float(response_db.cost_concerning_USD / second_response_db.cost_concerning_USD)
